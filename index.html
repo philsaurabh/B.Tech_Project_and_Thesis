@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Malicious Code Dynamics with Target &amp; Attacker Nodes</title>
+  <meta name="description" content="A seven-compartment epidemiological model (SIQR target + IBR attacker) of malicious code propagation in computer networks, with firewall and antivirus control coefficients. B.Tech project, ABV-IIITM Gwalior, 2017.">
+  <meta property="og:title" content="Analysis of Malicious Code Dynamics with Target and Attacker Nodes">
+  <meta property="og:description" content="SIQR–IBR compartmental model, stability analysis, R₀, firewall coefficient and sensitivity analysis — with an interactive simulator.">
+  <meta property="og:image" content="assets/figures/fig-dr1.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23c2410c'/><circle cx='16' cy='16' r='5' fill='white'/></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <nav class="wrap topbar-inner">
+    <a href="#top" class="brand"><span class="brand-dot"></span>MalCode Dynamics</a>
+    <ul class="nav-links">
+      <li><a href="#model">Model</a></li>
+      <li><a href="#analysis">Analysis</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#simulator">Simulator</a></li>
+      <li><a href="#sensitivity">Sensitivity</a></li>
+      <li><a href="#code">Code</a></li>
+    </ul>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+    </button>
+  </nav>
+</header>
+
+<main id="top">
+
+<!-- ===================== HERO ===================== -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">B.Tech Project · ABV-IIITM Gwalior · 2017</p>
+      <h1>Analysis of Malicious Code Dynamics with Target and Attacker Nodes</h1>
+      <p class="lede">A seven-compartment epidemiological model of how malicious code spreads through a computer network — four classes for the targeted side, three for the attacker side — with firewall and antivirus coefficients that throttle transmission.</p>
+      <p class="authors">
+        <strong>Alok Singh</strong> · <strong>Neha Singh</strong> · <strong>Saurabh Sharma</strong><br>
+        <span class="muted">Supervised by Dr. Joydip Dhar &amp; Dr. Anuraj Singh</span>
+      </p>
+      <div class="btn-row">
+        <a class="btn btn-primary" href="Final%20Report.pdf">📄 Full report (PDF)</a>
+        <a class="btn" href="https://github.com/philsaurabh/B_Tech_Project_Analysis_of_malicious_code_dynamics_in_network">GitHub repository</a>
+        <a class="btn" href="#simulator">Try the simulator →</a>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">7</span><span class="stat-lbl">compartments</span></div>
+      <div class="stat"><span class="stat-num">2</span><span class="stat-lbl">equilibria (E₁, E₂)</span></div>
+      <div class="stat"><span class="stat-num">4</span><span class="stat-lbl">parameter sets</span></div>
+      <div class="stat"><span class="stat-num">R₀</span><span class="stat-lbl">threshold at 1</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ABSTRACT ===================== -->
+<section class="section" id="abstract">
+  <div class="wrap narrow">
+    <h2>Abstract</h2>
+    <p>The project develops a compartmental model, built on infection-control mechanisms, to describe a distributed attack on targeted groups in a computer network. Two coupled sub-models capture the difference between the attacker class and the targeted class. Targeted nodes are split into <em>Susceptible</em> (S), <em>Infected</em> (I), <em>Quarantined</em> (Q) and <em>Recovered</em> (R); attacker nodes into <em>Infected</em> (I), <em>Breaking-out</em> (B) and <em>Recovered</em> (R).</p>
+    <p>Boundedness, feasibility of equilibria and their stability are established using cyber mass-action incidence. The basic reproduction number \(R_0\) decides the outcome: \(R_0 &lt; 1\) gives a stable malicious-code-free state, while \(R_0 &gt; 1\) gives a locally asymptotically stable endemic state. The effect of a media-coverage (firewall) coefficient \(m\) is studied, numerical simulation verifies the analytical results, and normalised forward sensitivity indices identify the parameters that matter most for \(R_0\).</p>
+    <p class="keywords"><span>Compartmental model</span><span>Computer networks</span><span>Local asymptotic stability</span><span>Basic reproduction number</span><span>Sensitivity analysis</span><span>Firewall</span></p>
+  </div>
+</section>
+
+<!-- ===================== WHY ===================== -->
+<section class="section alt">
+  <div class="wrap">
+    <h2>Why a new model?</h2>
+    <p class="section-lede">A review of earlier SIR, SEIRS, SEIQRS and SLBS models surfaced five design flaws this model is built to avoid.</p>
+    <div class="cards">
+      <article class="card"><h3>No “Exposed” class</h3><p>Once attacked, a computer is infected immediately and can propagate the attack, so an E compartment adds nothing.</p></article>
+      <article class="card"><h3>Latent vs. breaking-out</h3><p>Infection is split into latent (I) and breaking-out (B). Breaking-out machines degrade visibly and recover faster.</p></article>
+      <article class="card"><h3>Quarantine on the target side only</h3><p>Defenders isolate infected nodes; attackers have no reason to, so Q exists only in the targeted class.</p></article>
+      <article class="card"><h3>No permanent immunity</h3><p>Recovered machines can be hit by new malware, so R flows back to S (target) and to I (attacker).</p></article>
+      <article class="card"><h3>Room for new attacks</h3><p>Ransomware-style attacks — carrier, burst, re-hack on recovery — fit the attacker I → B → R → I loop.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MODEL ===================== -->
+<section class="section" id="model">
+  <div class="wrap">
+    <h2>The SIQR–IBR model</h2>
+    <p class="section-lede">Targeted nodes follow an SIQR structure; attacker nodes follow an IBR loop. The two sides couple through the breaking-out class \(B_2\), which infects targeted susceptibles at a firewall-damped rate.</p>
+
+    <div class="model-grid">
+      <figure class="diagram-card">
+        <svg viewBox="0 0 560 470" class="flow" role="img" aria-labelledby="flowTitle">
+          <title id="flowTitle">Schematic flow diagram of the SIQR target and IBR attacker model</title>
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+          </defs>
+          <!-- band labels -->
+          <rect x="8" y="8" width="544" height="222" rx="14" class="band band-target"/>
+          <rect x="8" y="244" width="544" height="218" rx="14" class="band band-attacker"/>
+          <text x="24" y="32" class="band-lbl">TARGETED NODES</text>
+          <text x="24" y="268" class="band-lbl">ATTACKER NODES</text>
+
+          <!-- target nodes -->
+          <g class="node n-s"><circle cx="110" cy="120" r="30"/><text x="110" y="126">S₁</text></g>
+          <g class="node n-i"><circle cx="290" cy="120" r="30"/><text x="290" y="126">I₁</text></g>
+          <g class="node n-q"><circle cx="450" cy="70" r="30"/><text x="450" y="76">Q₁</text></g>
+          <g class="node n-r"><circle cx="450" cy="185" r="30"/><text x="450" y="191">R₁</text></g>
+          <!-- attacker nodes -->
+          <g class="node n-i2"><circle cx="160" cy="380" r="30"/><text x="160" y="386">I₂</text></g>
+          <g class="node n-b"><circle cx="330" cy="320" r="30"/><text x="330" y="326">B₂</text></g>
+          <g class="node n-r2"><circle cx="420" cy="410" r="30"/><text x="420" y="416">R₂</text></g>
+
+          <g class="edges">
+            <!-- recruitment -->
+            <line x1="30" y1="120" x2="78" y2="120" marker-end="url(#arr)"/><text x="40" y="110" class="lbl">b</text>
+            <line x1="80" y1="380" x2="128" y2="380" marker-end="url(#arr)"/><text x="90" y="370" class="lbl">b₁</text>
+            <!-- S1 -> I1 -->
+            <line x1="142" y1="120" x2="258" y2="120" marker-end="url(#arr)" class="e-inf"/>
+            <text x="200" y="108" class="lbl lbl-c">β₁e<tspan dy="-6" font-size="10">−m₁I₁/N₁</tspan></text>
+            <!-- I1 -> Q1, I1 -> R1 -->
+            <line x1="318" y1="106" x2="420" y2="78" marker-end="url(#arr)"/><text x="365" y="82" class="lbl">μ</text>
+            <line x1="318" y1="134" x2="420" y2="178" marker-end="url(#arr)"/><text x="362" y="172" class="lbl">η</text>
+            <!-- Q1 -> R1 -->
+            <line x1="450" y1="102" x2="450" y2="152" marker-end="url(#arr)"/><text x="460" y="132" class="lbl">λ₀</text>
+            <!-- R1 -> S1 -->
+            <path d="M420,200 Q260,232 120,152" fill="none" marker-end="url(#arr)"/><text x="260" y="210" class="lbl">α</text>
+            <!-- deaths -->
+            <line x1="110" y1="88" x2="110" y2="48" marker-end="url(#arr)" class="e-out"/><text x="118" y="56" class="lbl lbl-s">d₁</text>
+            <line x1="290" y1="88" x2="290" y2="48" marker-end="url(#arr)" class="e-out"/><text x="298" y="56" class="lbl lbl-s">d₂</text>
+            <line x1="482" y1="70" x2="530" y2="70" marker-end="url(#arr)" class="e-out"/><text x="506" y="62" class="lbl lbl-s">d₂</text>
+            <line x1="482" y1="185" x2="530" y2="185" marker-end="url(#arr)" class="e-out"/><text x="506" y="177" class="lbl lbl-s">d₁</text>
+            <!-- I2 -> B2 -->
+            <line x1="188" y1="366" x2="300" y2="332" marker-end="url(#arr)"/><text x="236" y="340" class="lbl">δ</text>
+            <!-- B2 -> R2 -->
+            <line x1="350" y1="345" x2="402" y2="384" marker-end="url(#arr)"/><text x="384" y="356" class="lbl">γ</text>
+            <!-- I2 <-> R2 -->
+            <line x1="190" y1="390" x2="388" y2="408" marker-end="url(#arr)"/><text x="280" y="392" class="lbl">η₁</text>
+            <line x1="390" y1="422" x2="192" y2="402" marker-end="url(#arr)"/><text x="280" y="430" class="lbl">θ</text>
+            <!-- attacker deaths -->
+            <line x1="160" y1="412" x2="160" y2="448" marker-end="url(#arr)" class="e-out"/><text x="168" y="444" class="lbl lbl-s">d₄</text>
+            <line x1="362" y1="320" x2="410" y2="320" marker-end="url(#arr)" class="e-out"/><text x="386" y="312" class="lbl lbl-s">d₄</text>
+            <line x1="452" y1="410" x2="500" y2="410" marker-end="url(#arr)" class="e-out"/><text x="476" y="402" class="lbl lbl-s">d₃</text>
+            <!-- cross infection B2 -> S1 -->
+            <path d="M318,292 C250,236 130,230 112,154" fill="none" marker-end="url(#arr)" class="e-cross"/>
+            <text x="176" y="268" class="lbl lbl-cross">β₂e<tspan dy="-6" font-size="10">−m₂B₂/N₂</tspan></text>
+          </g>
+        </svg>
+        <figcaption>Schematic flow (redrawn from Fig. 2.1 of the report). The dashed orange arrow is the cross-infection channel from attacker to target, damped by the firewall coefficient \(m_2\).</figcaption>
+      </figure>
+
+      <div>
+        <h3>Compartments</h3>
+        <table class="tbl">
+          <thead><tr><th>Symbol</th><th>Class</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sw sw-s"></span>\(S_1\)</td><td>Target</td><td>Susceptible nodes</td></tr>
+            <tr><td><span class="sw sw-i"></span>\(I_1\)</td><td>Target</td><td>Infected nodes</td></tr>
+            <tr><td><span class="sw sw-q"></span>\(Q_1\)</td><td>Target</td><td>Quarantined nodes</td></tr>
+            <tr><td><span class="sw sw-r"></span>\(R_1\)</td><td>Target</td><td>Recovered nodes</td></tr>
+            <tr><td><span class="sw sw-i2"></span>\(I_2\)</td><td>Attacker</td><td>Infected (latent) nodes</td></tr>
+            <tr><td><span class="sw sw-b"></span>\(B_2\)</td><td>Attacker</td><td>Breaking-out nodes</td></tr>
+            <tr><td><span class="sw sw-r2"></span>\(R_2\)</td><td>Attacker</td><td>Recovered nodes</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Populations: \(N_1 = S_1+I_1+Q_1+R_1\) and \(N_2 = I_2+B_2+R_2\). Mass-action mixing and homogeneous spatial distribution are assumed.</p>
+      </div>
+    </div>
+
+    <h3 class="mt">Media-coverage (firewall) incidence</h3>
+    <p>Instead of bilinear \(\beta SI\) or standard \(\beta SI/N\) incidence, transmission is damped by a coverage factor:</p>
+    <div class="eq">$$\beta(I) = \beta\, e^{-m I / N}$$</div>
+    <p>Its minimum, \(\beta e^{-m}\), does not depend on population size — unlike the older form \(\beta e^{-mI}\), which pushes transmission to zero as \(I\) grows. Firewall vigilance alone cannot drive transmission below a threshold, so this form is the more realistic one.</p>
+
+    <h3 class="mt">Governing equations</h3>
+    <div class="eq-tabs" role="tablist">
+      <button class="tab active" data-eq="target" role="tab">Targeted nodes</button>
+      <button class="tab" data-eq="attacker" role="tab">Attacker nodes</button>
+    </div>
+    <div class="eq-panel active" id="eq-target">
+      $$\begin{aligned}
+      \frac{dS_1}{dt} &= b - d_1 S_1 + \alpha R_1 - \beta_1 e^{-m_1 I_1/N_1}\frac{I_1}{N_1}S_1 - \beta_2 e^{-m_2 B_2/N_2}\frac{B_2}{N_2}S_1\\[4pt]
+      \frac{dI_1}{dt} &= \beta_1 e^{-m_1 I_1/N_1}\frac{I_1}{N_1}S_1 + \beta_2 e^{-m_2 B_2/N_2}\frac{B_2}{N_2}S_1 - (d_2+\eta+\mu)\,I_1\\[4pt]
+      \frac{dQ_1}{dt} &= \mu I_1 - (d_2 + \lambda_0)\,Q_1\\[4pt]
+      \frac{dR_1}{dt} &= \lambda_0 Q_1 + \eta I_1 - (\alpha + d_1)\,R_1
+      \end{aligned}$$
+    </div>
+    <div class="eq-panel" id="eq-attacker">
+      $$\begin{aligned}
+      \frac{dI_2}{dt} &= b_1 - (d_4 + \delta + \eta_1)\,I_2 + \theta R_2\\[4pt]
+      \frac{dB_2}{dt} &= \delta I_2 - (d_4 + \gamma)\,B_2\\[4pt]
+      \frac{dR_2}{dt} &= \gamma B_2 + \eta_1 I_2 - (d_3 + \theta)\,R_2
+      \end{aligned}$$
+    </div>
+
+    <details class="params">
+      <summary>Parameter glossary</summary>
+      <table class="tbl compact">
+        <tbody>
+          <tr><td>\(b,\ b_1\)</td><td>Recruitment rates of target and attacker classes</td></tr>
+          <tr><td>\(d_1,\ d_3\)</td><td>Natural death rates of target and attacker nodes</td></tr>
+          <tr><td>\(\beta_1\)</td><td>Contact rate, susceptible → infected (target)</td></tr>
+          <tr><td>\(\beta_2\)</td><td>Contact rate, breaking-out (attacker) → susceptible (target)</td></tr>
+          <tr><td>\(\gamma\)</td><td>Recovery rate of breaking-out nodes</td></tr>
+          <tr><td>\(\eta,\ \eta_1\)</td><td>Recovery rates of infected nodes</td></tr>
+          <tr><td>\(d_2,\ d_4\)</td><td>Death rates in infected target / attacker classes (infection + natural)</td></tr>
+          <tr><td>\(\lambda_0\)</td><td>Recovery rate of quarantined nodes</td></tr>
+          <tr><td>\(\delta\)</td><td>Rate infected → breaking-out (attacker)</td></tr>
+          <tr><td>\(\theta\)</td><td>Immunity loss, recovered → infected (attacker)</td></tr>
+          <tr><td>\(\alpha\)</td><td>Immunity loss, recovered → susceptible (target)</td></tr>
+          <tr><td>\(\mu\)</td><td>Rate infected → quarantined (target)</td></tr>
+          <tr><td>\(m_1,\ m_2\)</td><td>Infection-controlling coefficients (antivirus, firewall)</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+</section>
+
+<!-- ===================== ANALYSIS ===================== -->
+<section class="section alt" id="analysis">
+  <div class="wrap">
+    <h2>Mathematical analysis</h2>
+    <div class="analysis-grid">
+      <article class="panel">
+        <span class="step">01</span>
+        <h3>Boundedness</h3>
+        <p>Summing the target equations gives \(\dot N_1 \le b - dN_1\) with \(d=\min\{d_1,d_2\}\), so \(\limsup N_1 \le b/d\). The region</p>
+        <div class="eq sm">$$\Omega_k=\{(S_1,I_1,Q_1,R_1)\in\mathbb R_+^4 : N_1 \le b/d\}$$</div>
+        <p>is positively invariant. The attacker side is bounded the same way by \(b_1/\min\{d_3,d_4\}\).</p>
+      </article>
+      <article class="panel">
+        <span class="step">02</span>
+        <h3>Equilibria</h3>
+        <p>Setting all derivatives to zero gives two steady states:</p>
+        <ul class="plain">
+          <li><strong>\(E_1 = (1,0,0,0,\hat I_2,\hat B_2,\hat R_2)\)</strong> — malicious-code-free, always feasible.</li>
+          <li><strong>\(E_2 = (\check S_1,\check I_1,\check Q_1,\check R_1,\check I_2,\check B_2,\check R_2)\)</strong> — endemic, feasibility checked numerically.</li>
+        </ul>
+        <p class="muted small">The attacker sub-system was solved analytically in Mathematica; the target side numerically.</p>
+      </article>
+      <article class="panel">
+        <span class="step">03</span>
+        <h3>Basic reproduction number</h3>
+        <p>Next-generation method on \(x=(I_1,Q_1,I_2,B_2)\), with \(R_0=\rho(FV^{-1})\). Non-dimensional model at \(E_1\):</p>
+        <div class="eq sm">$$R_0=\max\left\{\frac{\beta_1+1}{d_2+\mu+\eta+1},\ \frac{1}{d_2+\lambda_0+1}\right\}$$</div>
+        <p>Dimensional model:</p>
+        <div class="eq sm">$$\tilde R_0=\frac{\tilde\beta_1}{\tilde d_2+\tilde\mu+\tilde\eta}$$</div>
+      </article>
+      <article class="panel">
+        <span class="step">04</span>
+        <h3>Local asymptotic stability</h3>
+        <p>At \(E_1\) the Jacobian's eigenvalues include \(\beta_1-d_2-\eta-\mu\), \(-d_2-\lambda_0\), \(-1-\alpha\), and three roots of a cubic from the attacker block. When \(R_0&lt;1\) all have negative real parts, so:</p>
+        <div class="callout">\(R_0&lt;1\Rightarrow E_1\) stable (code dies out) · \(R_0&gt;1\Rightarrow E_2\) stable (code persists)</div>
+      </article>
+    </div>
+
+    <h3 class="mt">Parameter sets and feasible steady states</h3>
+    <div class="tbl-scroll">
+      <table class="tbl param-tbl">
+        <thead>
+          <tr><th>Parameter</th><th>Set A</th><th>Set B</th><th class="sep">Parameter</th><th>Set C</th><th>Set D</th></tr>
+          <tr class="sub"><th colspan="3">non-dimensional</th><th colspan="3" class="sep">dimensional</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>\(b\)</td><td>7.5</td><td>7.5</td><td class="sep">\(b\)</td><td>1</td><td>75</td></tr>
+          <tr><td>\(d_1\)</td><td>0.003</td><td>0.003</td><td class="sep">\(d_1\)</td><td>0.3</td><td>0.3</td></tr>
+          <tr><td>\(\beta_1\)</td><td>0.001</td><td>0.01</td><td class="sep">\(\tilde\beta_1\)</td><td>0.5</td><td>2.5</td></tr>
+          <tr><td>\(\beta_2\)</td><td>0.006</td><td>0.30</td><td class="sep">\(\tilde\beta_2\)</td><td>0.6</td><td>0.6</td></tr>
+          <tr><td>\(\mu\)</td><td>0.003</td><td>0.003</td><td class="sep">\(\tilde\mu\)</td><td>0.3</td><td>0.3</td></tr>
+          <tr><td>\(\lambda_0\)</td><td>0.008</td><td>0.0008</td><td class="sep">\(\tilde\lambda_0\)</td><td>0.8</td><td>0.8</td></tr>
+          <tr><td>\(d_4\)</td><td>0.075</td><td>0.0075</td><td class="sep">\(\tilde d_4\)</td><td>10</td><td>2.5</td></tr>
+          <tr><td>\(b_1\)</td><td>7.5</td><td>7.5</td><td class="sep">\(\tilde b_1\)</td><td>75</td><td>75</td></tr>
+          <tr><td>\(d_3\)</td><td>0.02</td><td>0.02</td><td class="sep">\(\tilde d_3\)</td><td>2.0</td><td>2.0</td></tr>
+          <tr><td>\(\eta\)</td><td>0.004</td><td>0.0004</td><td class="sep">\(\tilde\eta\)</td><td>0.4</td><td>0.4</td></tr>
+          <tr><td>\(\eta_1\)</td><td>0.175</td><td>0.0175</td><td class="sep">\(\tilde\eta_1\)</td><td>17.5</td><td>7.5</td></tr>
+          <tr><td>\(\alpha\)</td><td>0.010</td><td>0.0005</td><td class="sep">\(\tilde\alpha\)</td><td>1.0</td><td>1.0</td></tr>
+          <tr><td>\(d_2\)</td><td>0.4</td><td>0.004</td><td class="sep">\(\tilde d_2\)</td><td>0.4</td><td>0.4</td></tr>
+          <tr><td>\(\gamma\)</td><td>0.0005</td><td>0.01</td><td class="sep">\(\tilde\gamma\)</td><td>0.75</td><td>0.75</td></tr>
+          <tr><td>\(\delta\)</td><td>0.009</td><td>0.027</td><td class="sep">\(\tilde\delta\)</td><td>1.9</td><td>0.9</td></tr>
+          <tr><td>\(\theta\)</td><td>0.10</td><td>0.20</td><td class="sep">\(\tilde\theta\)</td><td>10</td><td>10</td></tr>
+          <tr><td>\(m_1\)</td><td>2</td><td>2</td><td class="sep">\(m_1\)</td><td>6</td><td>2</td></tr>
+          <tr><td>\(m_2\)</td><td>3</td><td>2</td><td class="sep">\(m_2\)</td><td>6</td><td>2</td></tr>
+        </tbody>
+        <tfoot>
+          <tr class="hl"><td>Feasible SS</td><td><span class="pill ok">E₁</span></td><td><span class="pill bad">E₂</span></td><td class="sep">Feasible SS</td><td><span class="pill ok">E₁</span></td><td><span class="pill bad">E₂</span></td></tr>
+          <tr><td>\(R_{01}\)</td><td>0.0098</td><td><strong>1.2500</strong></td><td class="sep" rowspan="2">\(\tilde R_0\)</td><td rowspan="2">0.4545</td><td rowspan="2"><strong>2.2727</strong></td></tr>
+          <tr><td>\(R_{02}\)</td><td>0.0073</td><td>0.3846</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== RESULTS ===================== -->
+<section class="section" id="results">
+  <div class="wrap">
+    <h2>Numerical results</h2>
+    <p class="section-lede">Simulations were run in MATLAB with <code>ode45</code> (Runge–Kutta–Fehlberg). Each plot shows node density over time for all seven classes; solid lines are targeted classes, dashed lines are attacker classes. Click any figure to enlarge.</p>
+
+    <div class="gallery-tabs" role="tablist">
+      <button class="tab active" data-gal="steady">Steady states</button>
+      <button class="tab" data-gal="nocontrol">Without control (m₁ = m₂ = 0)</button>
+      <button class="tab" data-gal="firewall">Firewall &amp; antivirus effect</button>
+    </div>
+
+    <div class="gallery active" id="gal-steady">
+      <figure class="fig"><img src="assets/figures/fig-dr2.png" alt="Set A node density versus time, initial population 0.4, 0.02, 0.02, 0.2, 0.5, 0.25, 0.25" loading="lazy"><figcaption><span class="tag ok">R₀ &lt; 1</span><b>Fig 3.1 · Set A.</b> Initial (0.4, 0.02, 0.02, 0.2, 0.5, 0.25, 0.25). \(I_1, Q_1, R_1 \to 0\): code-free \(E_1\) is stable.</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr3.png" alt="Set A node density versus time, second initial condition" loading="lazy"><figcaption><span class="tag ok">R₀ &lt; 1</span><b>Fig 3.2 · Set A.</b> Initial (0.30, 0.30, 0.11, 0.25, 0.50, 0.20, 0.25). Same limit from a different start: \(E_1\) is attracting.</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr4.png" alt="Set B node density versus time" loading="lazy"><figcaption><span class="tag bad">R₀ &gt; 1</span><b>Fig 3.3 · Set B.</b> Initial (0.2, 0.1, 0.3, 0.4, 0.5, 0.4, 0.2). All classes settle above zero: endemic \(E_2\) is stable.</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr8.png" alt="Set B node density versus time, second initial condition" loading="lazy"><figcaption><span class="tag bad">R₀ &gt; 1</span><b>Fig 3.4 · Set B.</b> Initial (0.2, 0.01, 0.03, 0.5, 0.4, 0.8, 0.2). Malicious code persists in the long run.</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr6.png" alt="Set C dimensional node density versus time" loading="lazy"><figcaption><span class="tag ok">R̃₀ = 0.45</span><b>Fig 3.5 · Set C.</b> Initial (20, 20, 15, 10, 10, 20, 10). Dimensional model converges to \(E_1\).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr5.png" alt="Set D dimensional node density versus time" loading="lazy"><figcaption><span class="tag bad">R̃₀ = 2.27</span><b>Fig 3.6 · Set D.</b> Initial (50, 55, 40, 25, 10, 20, 25). Dimensional model converges to endemic \(E_2\).</figcaption></figure>
+    </div>
+
+    <div class="gallery" id="gal-nocontrol">
+      <figure class="fig"><img src="assets/figures/fig-dr10.png" alt="Set A without control coefficients" loading="lazy"><figcaption><b>Fig 3.7 · Set A, no control.</b> Initial (0.4, 0.02, 0.02, 0.2, 0.5, 0.25, 0.25).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr15.png" alt="Set B without control coefficients" loading="lazy"><figcaption><b>Fig 3.8 · Set B, no control.</b> Initial (0.2, 0.1, 0.3, 0.4, 0.5, 0.4, 0.2).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr16.png" alt="Set C without control coefficients" loading="lazy"><figcaption><b>Fig 3.9 · Set C, no control.</b> Initial (20, 20, 15, 10, 10, 20, 10).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr7.png" alt="Set D without control coefficients" loading="lazy"><figcaption><b>Fig 3.10 · Set D, no control.</b> Initial (20, 1, 10, 20, 50, 20, 75).</figcaption></figure>
+      <p class="gallery-note">With \(m_1=m_2=0\), susceptible density falls and the infected population grows relative to the controlled runs. The qualitative behaviour — which equilibrium wins — is unchanged, because \(R_0\) does not depend on \(m_1\) or \(m_2\).</p>
+    </div>
+
+    <div class="gallery" id="gal-firewall">
+      <figure class="fig"><img src="assets/figures/fig-dr13.png" alt="Effect of antivirus coefficient m1 on infected population when R0 below 1" loading="lazy"><figcaption><span class="tag ok">R̃₀ &lt; 1</span><b>Fig 3.11.</b> Effect of \(m_1\) (antivirus) on \(\tilde I_1\).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr11.png" alt="Effect of firewall coefficient m2 on infected population when R0 below 1" loading="lazy"><figcaption><span class="tag ok">R̃₀ &lt; 1</span><b>Fig 3.12.</b> Effect of \(m_2\) (firewall) on \(\tilde I_1\).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr14.png" alt="Effect of antivirus coefficient m1 on infected population when R0 above 1" loading="lazy"><figcaption><span class="tag bad">R̃₀ &gt; 1</span><b>Fig 3.13.</b> Effect of \(m_1\) (antivirus) on \(\tilde I_1\).</figcaption></figure>
+      <figure class="fig"><img src="assets/figures/fig-dr12.png" alt="Effect of firewall coefficient m2 on infected population when R0 above 1" loading="lazy"><figcaption><span class="tag bad">R̃₀ &gt; 1</span><b>Fig 3.14.</b> Effect of \(m_2\) (firewall) on \(\tilde I_1\).</figcaption></figure>
+      <p class="gallery-note">In both regimes, the infected fraction drops as the firewall and antivirus coefficients increase. The firewall limits damage by blocking unauthorised access; antivirus prevents, detects and removes malicious software.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SIMULATOR ===================== -->
+<section class="section alt" id="simulator">
+  <div class="wrap">
+    <h2>Interactive simulator</h2>
+    <p class="section-lede">The dimensional model, integrated in your browser with fourth-order Runge–Kutta. Start from Set C or Set D and move the sliders to see how \(\tilde R_0\) and the trajectories respond.</p>
+
+    <div class="sim">
+      <div class="sim-controls">
+        <div class="preset-row">
+          <span class="ctl-lbl">Preset</span>
+          <button class="chip" data-preset="C">Set C</button>
+          <button class="chip active" data-preset="D">Set D</button>
+          <button class="chip" data-preset="D0">Set D, no control</button>
+        </div>
+
+        <div class="r0-box" id="r0Box">
+          <span class="r0-lbl">\(\tilde R_0 = \tilde\beta_1/(\tilde d_2+\tilde\mu+\tilde\eta)\)</span>
+          <span class="r0-val" id="r0Val">2.273</span>
+          <span class="r0-verdict" id="r0Verdict">Endemic — code persists</span>
+        </div>
+
+        <div id="sliders"></div>
+
+        <div class="sim-row">
+          <label class="ctl-lbl" for="tmax" style="font-family:var(--sans);font-style:normal;font-size:.82rem">Time (t)</label>
+          <input type="range" id="tmax" min="10" max="200" step="10" value="50">
+          <output id="tmaxOut">50</output>
+        </div>
+        <label class="check"><input type="checkbox" id="logScale"> Log-scale y-axis</label>
+      </div>
+
+      <div class="sim-plot">
+        <div class="legend" id="legend"></div>
+        <div class="canvas-wrap"><canvas id="simCanvas" aria-label="Node density over time"></canvas></div>
+        <div class="ss-table" id="ssTable"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FIREWALL COEFFICIENT ===================== -->
+<section class="section" id="firewall">
+  <div class="wrap">
+    <h2>Estimating the firewall coefficient</h2>
+    <div class="fw-grid">
+      <div>
+        <p>A firewall checks each connection against its rule base in order — IP address, port, domain, keywords — using rule priority, authenticated bypass, block and allow rules. The report defines the security coefficient from how files respond to those rules:</p>
+        <div class="eq">$$m = -\log_2\,(a + b - ab)$$</div>
+        <ul class="plain">
+          <li>\(b\) — response of incoming data to the security rules: \(b=0\) if the data pass every rule, \(b=1\) otherwise.</li>
+          <li>\(a\) — proportion by which malware propagation is reduced when every received file passes the rules.</li>
+        </ul>
+        <p class="muted small">\(a+b-ab\) is the probability-style union of the two factors; a smaller union means a stronger firewall and a larger \(m\).</p>
+      </div>
+      <div class="fw-calc">
+        <h3>Calculator</h3>
+        <div class="sim-row"><label class="ctl-lbl" for="fwA">\(a\)</label><input type="range" id="fwA" min="0.01" max="1" step="0.01" value="0.25"><output id="fwAOut">0.25</output></div>
+        <div class="sim-row"><label class="ctl-lbl" for="fwB">\(b\)</label><input type="range" id="fwB" min="0" max="1" step="0.01" value="0"><output id="fwBOut">0.00</output></div>
+        <div class="fw-result"><span>\(m =\)</span> <strong id="fwM">2.000</strong></div>
+        <div class="fw-damp">
+          <span class="muted small">Transmission multiplier \(e^{-m\,I/N}\) at \(I/N = 1\):</span>
+          <div class="bar"><div class="bar-fill" id="fwBar"></div></div>
+          <span class="small" id="fwDamp">e<sup>−m</sup> = 0.135</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== SENSITIVITY ===================== -->
+<section class="section alt" id="sensitivity">
+  <div class="wrap">
+    <h2>Sensitivity analysis</h2>
+    <p class="section-lede">The normalised forward sensitivity index \(\Upsilon^{u}_{p} = \dfrac{\partial u}{\partial p}\cdot\dfrac{p}{u}\) gives the percentage change in \(u\) for a 1% change in \(p\). Parameters not listed have index 0.</p>
+
+    <div class="sens-tabs" role="tablist">
+      <button class="tab active" data-sens="tilde">\(\tilde R_0\) (dimensional)</button>
+      <button class="tab" data-sens="r01">\(R_{01}\) (non-dim.)</button>
+      <button class="tab" data-sens="r02">\(R_{02}\) (non-dim.)</button>
+    </div>
+    <div class="sens-grid">
+      <div class="sens-chart" id="sensChart"></div>
+      <div class="sens-side">
+        <div class="sens-formula" id="sensFormula"></div>
+        <p class="small muted" id="sensNote"></p>
+      </div>
+    </div>
+
+    <div class="two-col mt">
+      <div>
+        <h3>Sensitive parameters by threshold</h3>
+        <table class="tbl">
+          <thead><tr><th>Reproduction number</th><th>Sensitive parameters</th></tr></thead>
+          <tbody>
+            <tr><td>\(R_{01}\)</td><td>\(\beta_1,\ \mu,\ \eta\)</td></tr>
+            <tr><td>\(R_{02}\)</td><td>\(d_2,\ \lambda_0\)</td></tr>
+            <tr><td>\(\tilde R_0\)</td><td>\(\tilde\beta_1,\ \tilde d_2,\ \tilde\mu,\ \tilde\eta\)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Comparison with the earlier model</h3>
+        <table class="tbl">
+          <thead><tr><th>Type of analysis</th><th>Bhargava, Palash, Soni, Dhar</th><th>Proposed</th></tr></thead>
+          <tbody>
+            <tr><td>Total equilibrium states</td><td>16</td><td><strong>2</strong></td></tr>
+            <tr><td>Malicious-code-free equilibria</td><td>4</td><td><strong>1</strong></td></tr>
+            <tr><td>Endemic equilibria</td><td>12</td><td><strong>1</strong></td></tr>
+            <tr><td>Highly sensitive parameters</td><td>2 – 4</td><td><strong>0</strong></td></tr>
+            <tr><td>Moderately sensitive parameters</td><td>3 – 5</td><td><strong>2 – 4</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CONCLUSION ===================== -->
+<section class="section" id="conclusion">
+  <div class="wrap">
+    <h2>Conclusions &amp; future scope</h2>
+    <div class="two-col">
+      <ol class="findings">
+        <li><strong>Two equilibria, one threshold.</strong> The model has one malicious-code-free and one endemic equilibrium. \(E_1\) is stable for \(R_0&lt;1\) and \(E_2\) for \(R_0&gt;1\), shown by local asymptotic stability.</li>
+        <li><strong>A measurable firewall coefficient.</strong> \(m=-\log_2(a+b-ab)\) ties the control parameter to the firewall rule base.</li>
+        <li><strong>Control lowers the level, not the regime.</strong> \(R_0\) is independent of \(m\), so firewall security does not change which equilibrium wins — but it reduces the number of infected nodes at steady state.</li>
+        <li><strong>Few, moderate sensitivities.</strong> No parameter is highly sensitive; \(\tilde\beta_1,\ \tilde d_2,\ \tilde\mu,\ \tilde\eta\) carry the moderate influence on \(\tilde R_0\).</li>
+      </ol>
+      <div class="future">
+        <h3>Future scope</h3>
+        <ul class="plain">
+          <li>Time-varying recruitment rates.</li>
+          <li>Antidotal nodes representing antivirus security, and more general susceptible classes.</li>
+          <li>Kill-signal procedures driven by information propagation.</li>
+          <li>Using quarantined-node structure to contain new attacks such as ransomware, or at least lower a network's infection probability.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CODE ===================== -->
+<section class="section alt" id="code">
+  <div class="wrap">
+    <h2>Code &amp; reproducibility</h2>
+    <div class="two-col">
+      <div>
+        <h3>Repository layout</h3>
+<pre class="tree"><code>.
+├── <a href="https://github.com/philsaurabh/B_Tech_Project_Analysis_of_malicious_code_dynamics_in_network/tree/master/Source%20Code/MATLAB">Source Code/MATLAB</a>
+│   ├── Normalized.m        <span class="c"># non-dimensional system (Sets A, B)</span>
+│   └── Duimensional.m      <span class="c"># dimensional system (Sets C, D)</span>
+├── <a href="https://github.com/philsaurabh/B_Tech_Project_Analysis_of_malicious_code_dynamics_in_network/tree/master/Source%20Code/Mathematica">Source Code/Mathematica</a>
+│   ├── malicious free.nb   <span class="c"># all 7 equations → equilibria</span>
+│   ├── attacker.nb         <span class="c"># attacker side, solved analytically</span>
+│   ├── Numerical equation.nb  <span class="c"># target side, solved numerically</span>
+│   └── senstivity *.nb     <span class="c"># sensitivity indices</span>
+├── Final Report/           <span class="c"># LaTeX source + figures</span>
+├── Presentation/           <span class="c"># Beamer slides</span>
+└── Final Report.pdf</code></pre>
+        <p class="small muted">Tools: MATLAB 8.1 (R2013a), Wolfram Mathematica 11.1.1. Analysis uses RKF45, Jacobians and eigenvalues.</p>
+      </div>
+      <div>
+        <h3>Run the dimensional model (MATLAB)</h3>
+<pre class="code"><code><span class="k">function</span> Duimensional
+    tmax = 100;
+    initial = [0.2 0.2 0.02 0.1 0.1 0.1 0.1];
+    [t, y] = ode45(@simulation, [0 tmax], initial);
+    plot(t, y, <span class="s">'LineWidth'</span>, 1.5);
+    legend(<span class="s">'S1'</span>,<span class="s">'I1'</span>,<span class="s">'Q1'</span>,<span class="s">'R1'</span>,<span class="s">'I2'</span>,<span class="s">'B2'</span>,<span class="s">'R2'</span>);
+    <span class="c">% m1, m2: antivirus and firewall coefficients</span>
+    <span class="c">% R = beta1/(d2+eta+mu)  -> basic reproduction number</span>
+    ...
+<span class="k">end</span></code></pre>
+        <h3>Cite</h3>
+<pre class="code cite" id="bibtex"><code>@techreport{singh2017malicious,
+  title  = {Analysis of Malicious Code Dynamics with Target
+            and Attacker Nodes Using Mathematical Model},
+  author = {Singh, Alok and Singh, Neha and Sharma, Saurabh},
+  institution = {ABV-Indian Institute of Information
+                 Technology and Management, Gwalior},
+  type   = {B.Tech. Project Report},
+  year   = {2017}
+}</code></pre>
+        <button class="btn btn-sm" id="copyBib">Copy BibTeX</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>ABV-Indian Institute of Information Technology and Management, Gwalior · 2017</span>
+    <span>Released under the repository <a href="https://github.com/philsaurabh/B_Tech_Project_Analysis_of_malicious_code_dynamics_in_network/blob/master/LICENSE">license</a>.</span>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <button class="lb-close" aria-label="Close">×</button>
+  <img alt="">
+  <p class="lb-cap"></p>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script defer src="assets/js/main.js"></script>
+<script defer src="assets/js/simulator.js"></script>
+</body>
+</html>
